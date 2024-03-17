@@ -13,9 +13,48 @@
 )]
 
 use clap::Parser;
+use clap_complete::Shell;
+use std::ffi::OsString;
 
 #[derive(Parser, Debug)]
-struct Args {}
+#[command(name = "clapfile", about, version)]
+struct Args {
+    #[clap(subcommand)]
+    command: Command,
+}
+
+#[derive(Parser, Debug)]
+enum Command {
+    /// Run the CLI defined by the config file.
+    #[command()]
+    Run(RunArgs),
+
+    /// Generate shell completions.
+    #[command()]
+    Completions(CompletionArgs),
+}
+
+#[derive(Parser, Debug)]
+struct RunArgs {
+    /// Configuration file.
+    #[arg(short, long)]
+    config: OsString,
+
+    /// Arguments to pass to the CLI.
+    #[arg(last = true)]
+    args: Vec<OsString>,
+}
+
+#[derive(Parser, Debug)]
+struct CompletionArgs {
+    /// Target shell.
+    #[arg()]
+    shell: Shell,
+
+    /// Configuration file.
+    #[arg(short, long)]
+    config: OsString,
+}
 
 fn main() {
     Args::parse();
@@ -24,11 +63,10 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::CommandFactory;
 
     #[test]
     fn test_basic_command_parsing() {
         // Simply test that it does not crash.
-        Args::command().get_matches_from(vec![""]);
+        Args::parse_from(vec!["", "run", "--config", "config.toml"]);
     }
 }
