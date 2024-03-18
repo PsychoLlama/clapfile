@@ -16,6 +16,8 @@ use clap::Parser;
 use clap_complete::Shell;
 use std::ffi::OsString;
 
+mod config_file;
+
 #[derive(Parser, Debug)]
 #[command(name = "clapfile", about, version)]
 struct Args {
