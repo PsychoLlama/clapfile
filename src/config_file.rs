@@ -1,3 +1,4 @@
+use anyhow::Context;
 use clap::Command;
 use serde::Deserialize;
 use std::ffi::OsString;
@@ -11,7 +12,9 @@ struct Config {
 
 #[allow(dead_code)]
 pub fn load(config_file: OsString) -> anyhow::Result<Command> {
-    let config_contents = std::fs::read_to_string(config_file)?;
+    let config_contents =
+        std::fs::read_to_string(config_file).context("Failed to load config file")?;
+
     let app = serde_yaml::from_str::<Config>(&config_contents)?;
     Ok(app.into())
 }
