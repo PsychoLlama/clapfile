@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::ffi::OsString;
 
 #[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(Default))]
 struct Config {
     name: String,
     about: Option<String>,
@@ -40,20 +41,12 @@ mod tests {
     use super::*;
     use clap::builder::StyledStr;
 
-    impl Default for Config {
-        fn default() -> Self {
-            Config {
-                name: String::new(),
-                about: None,
-                version: None,
-            }
-        }
-    }
-
     #[test]
     fn test_simple_command() {
-        let mut app = Config::default();
-        app.name = String::from("cmd-test");
+        let app = Config {
+            name: String::from("cmd-test"),
+            ..Config::default()
+        };
 
         let command: Command = app.into();
         assert_eq!(command.get_name(), "cmd-test");
@@ -61,8 +54,10 @@ mod tests {
 
     #[test]
     fn test_command_description() {
-        let mut app = Config::default();
-        app.about = Some(String::from("test command"));
+        let app = Config {
+            about: Some(String::from("test command")),
+            ..Config::default()
+        };
 
         let command: Command = app.into();
         assert_eq!(command.get_about(), Some(&StyledStr::from("test command")));
@@ -70,8 +65,10 @@ mod tests {
 
     #[test]
     fn test_command_version() {
-        let mut app = Config::default();
-        app.version = Some(String::from("0.1.0"));
+        let app = Config {
+            version: Some(String::from("0.1.0")),
+            ..Config::default()
+        };
 
         let command: Command = app.into();
         assert_eq!(command.get_version(), Some("0.1.0"));
