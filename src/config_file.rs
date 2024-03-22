@@ -3,6 +3,7 @@ use clap::Command;
 use serde::Deserialize;
 use std::ffi::OsString;
 
+/// Configuration file structure. Fields mirror those of `clap::Command`.
 #[derive(Debug, Deserialize)]
 #[cfg_attr(test, derive(Default))]
 struct Config {
@@ -11,6 +12,7 @@ struct Config {
     version: Option<String>,
 }
 
+/// Load the configuration file and convert it to a `clap::Command`.
 #[allow(dead_code)]
 pub fn load(config_file: OsString) -> anyhow::Result<Command> {
     let config_contents =
