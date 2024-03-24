@@ -13,10 +13,10 @@
 )]
 
 use clap::Parser;
-use std::ffi::OsString;
 
 mod completions;
 mod config_file;
+mod runner;
 
 #[derive(Parser, Debug)]
 #[command(name = "clapfile", about, version)]
@@ -29,22 +29,11 @@ struct Args {
 enum Command {
     /// Run the CLI defined by the config file.
     #[command()]
-    Run(RunArgs),
+    Run(runner::Args),
 
     /// Generate shell completions.
     #[command()]
     Completions(completions::Args),
-}
-
-#[derive(Parser, Debug)]
-struct RunArgs {
-    /// Configuration file.
-    #[arg(short, long)]
-    config: OsString,
-
-    /// Arguments to pass to the CLI.
-    #[arg(last = true)]
-    args: Vec<OsString>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -52,7 +41,7 @@ fn main() -> anyhow::Result<()> {
 
     match args.command {
         Command::Completions(comp_args) => completions::gen_to_stdout(comp_args)?,
-        Command::Run(_) => todo!(),
+        Command::Run(run_args) => runner::run(run_args)?,
     };
 
     Ok(())

@@ -17,7 +17,7 @@ pub struct Args {
 
 /// Generate shell completions and write them to stdout.
 pub fn gen_to_stdout(args: Args) -> anyhow::Result<()> {
-    let mut command = config_file::load(args.config)?;
+    let mut command: clap::Command = config_file::load(args.config)?.into();
     let command_name = command.get_name().to_string();
 
     clap_complete::generate(

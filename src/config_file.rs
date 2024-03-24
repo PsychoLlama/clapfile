@@ -4,9 +4,9 @@ use serde::Deserialize;
 use std::ffi::OsString;
 
 /// Configuration file structure. Fields mirror those of `clap::Command`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Default))]
-struct Config {
+pub struct Config {
     name: String,
     about: Option<String>,
     version: Option<String>,
@@ -14,12 +14,11 @@ struct Config {
 
 /// Load the configuration file and convert it to a `clap::Command`.
 #[allow(dead_code)]
-pub fn load(config_file: OsString) -> anyhow::Result<Command> {
+pub fn load(config_file: OsString) -> anyhow::Result<Config> {
     let config_contents =
         std::fs::read_to_string(config_file).context("Failed to load config file")?;
 
-    let app = serde_yaml::from_str::<Config>(&config_contents)?;
-    Ok(app.into())
+    Ok(serde_yaml::from_str::<Config>(&config_contents)?)
 }
 
 impl From<Config> for Command {
