@@ -1,15 +1,20 @@
 use anyhow::Context;
 use clap::Command;
 use serde::Deserialize;
-use std::ffi::OsString;
+use std::{collections::HashMap, ffi::OsString};
 
 /// Configuration file structure. Fields mirror those of `clap::Command`.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Default))]
 pub struct Config {
-    name: String,
+    name: Option<String>,
     about: Option<String>,
     version: Option<String>,
+    subcommands: Option<HashMap<String, Config>>,
+
+    /// This is the script that gets executed when the command runs. It can be a path to an
+    /// executable file or a shell command.
+    pub run: Option<String>,
 }
 
 /// Load the configuration file and convert it to a `clap::Command`.
@@ -23,7 +28,9 @@ pub fn load(config_file: OsString) -> anyhow::Result<Config> {
 
 impl From<Config> for Command {
     fn from(config: Config) -> Command {
-        let mut command = Command::new(config.name);
+        let mut command = Command::new(config.name.unwrap_or_default());
+
+        /* --- Set Metadata --- */
 
         if let Some(about) = config.about {
             command = command.about(about);
@@ -31,6 +38,20 @@ impl From<Config> for Command {
 
         if let Some(version) = config.version {
             command = command.version(version);
+        }
+
+        /* --- Register Subcommands --- */
+
+        if let Some(subcommands) = config.subcommands {
+            for (name, script) in subcommands {
+                let mut subcommand: Command = script.into();
+
+                if subcommand.get_name() == "" {
+                    subcommand = subcommand.name(name);
+                }
+
+                command = command.subcommand(subcommand);
+            }
         }
 
         command
@@ -45,7 +66,7 @@ mod tests {
     #[test]
     fn test_simple_command() {
         let app = Config {
-            name: String::from("cmd-test"),
+            name: Some(String::from("cmd-test")),
             ..Config::default()
         };
 
@@ -73,5 +94,48 @@ mod tests {
 
         let command: Command = app.into();
         assert_eq!(command.get_version(), Some("0.1.0"));
+    }
+
+    #[test]
+    fn test_subcommand_exists() {
+        let app = Config {
+            subcommands: Some(HashMap::from_iter(vec![(
+                String::from("example"),
+                Config {
+                    run: Some("echo test".into()),
+                    ..Config::default()
+                },
+            )])),
+            ..Config::default()
+        };
+
+        let command: Command = app.into();
+        let example = command
+            .get_subcommands()
+            .find(|command| command.get_name() == "example");
+
+        assert!(example.is_some());
+    }
+
+    #[test]
+    fn test_subcommand_name_override() {
+        let app = Config {
+            subcommands: Some(HashMap::from_iter(vec![(
+                String::from("example"),
+                Config {
+                    name: Some(String::from("example-override")),
+                    run: Some("echo test".into()),
+                    ..Config::default()
+                },
+            )])),
+            ..Config::default()
+        };
+
+        let command: Command = app.into();
+        let example = command
+            .get_subcommands()
+            .find(|command| command.get_name() == "example-override");
+
+        assert!(example.is_some());
     }
 }
