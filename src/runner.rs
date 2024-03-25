@@ -18,11 +18,11 @@ pub fn run(args: Args) -> anyhow::Result<()> {
     let config = config_file::load(args.config)?;
     let command: clap::Command = config.clone().into();
 
-    let mut argv = vec![command.get_name().into()];
-    argv.extend(args.rest);
+    let mut synthetic_argv = vec![command.get_name().into()];
+    synthetic_argv.extend(args.rest);
 
     // Simply getting matches implements `--help` and friends.
-    command.clone().get_matches_from(argv);
+    command.clone().get_matches_from(synthetic_argv);
 
     todo!("run command");
 }
