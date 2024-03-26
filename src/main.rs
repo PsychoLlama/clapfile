@@ -7,10 +7,10 @@
     clippy::correctness,
     clippy::suspicious,
     clippy::unwrap_used,
-    clippy::expect_used,
     clippy::self_named_module_files,
     clippy::shadow_reuse
 )]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
 
 use clap::Parser;
 

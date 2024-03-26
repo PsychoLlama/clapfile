@@ -7,10 +7,10 @@ use std::{collections::HashMap, ffi::OsString};
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Default))]
 pub struct Config {
-    name: Option<String>,
-    about: Option<String>,
-    version: Option<String>,
-    subcommands: Option<HashMap<String, Config>>,
+    pub name: Option<String>,
+    pub about: Option<String>,
+    pub version: Option<String>,
+    pub subcommands: Option<HashMap<String, Config>>,
 
     /// This is the script that gets executed when the command runs. It can be a path to an
     /// executable file or a shell command.
@@ -46,6 +46,7 @@ impl From<Config> for Command {
             for (name, script) in subcommands {
                 let mut subcommand: Command = script.into();
 
+                // Inherit command name from hashmap key if unset.
                 if subcommand.get_name() == "" {
                     subcommand = subcommand.name(name);
                 }
