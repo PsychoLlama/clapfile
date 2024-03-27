@@ -1,6 +1,6 @@
 use clap::Parser;
 use clap_complete::Shell;
-use std::ffi::OsString;
+use std::{ffi::OsString, process::ExitCode};
 
 use crate::config_file;
 
@@ -16,7 +16,7 @@ pub struct Args {
 }
 
 /// Generate shell completions and write them to stdout.
-pub fn gen_to_stdout(args: Args) -> anyhow::Result<()> {
+pub fn gen_to_stdout(args: Args) -> anyhow::Result<ExitCode> {
     let mut command: clap::Command = config_file::load(args.config)?.into();
     let command_name = command.get_name().to_string();
 
@@ -27,5 +27,5 @@ pub fn gen_to_stdout(args: Args) -> anyhow::Result<()> {
         &mut std::io::stdout(),
     );
 
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }

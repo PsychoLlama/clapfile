@@ -12,6 +12,8 @@
 )]
 #![cfg_attr(not(test), deny(clippy::expect_used))]
 
+use std::process::ExitCode;
+
 use clap::Parser;
 
 mod completions;
@@ -36,15 +38,13 @@ enum Command {
     Completions(completions::Args),
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<ExitCode> {
     let args = Args::parse();
 
     match args.command {
-        Command::Completions(comp_args) => completions::gen_to_stdout(comp_args)?,
-        Command::Run(run_args) => runner::run(run_args)?,
-    };
-
-    Ok(())
+        Command::Completions(comp_args) => completions::gen_to_stdout(comp_args),
+        Command::Run(run_args) => runner::run(run_args),
+    }
 }
 
 #[cfg(test)]

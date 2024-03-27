@@ -1,7 +1,13 @@
+use anyhow::Context;
 use clap::Parser;
-use std::ffi::OsString;
+use std::{
+    ffi::OsString,
+    process::{Command, ExitCode, Stdio},
+};
 
 use crate::config_file::{self, Config};
+
+const SHELL: &str = "sh";
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -14,7 +20,7 @@ pub struct Args {
     rest: Vec<OsString>,
 }
 
-pub fn run(args: Args) -> anyhow::Result<()> {
+pub fn run(args: Args) -> anyhow::Result<ExitCode> {
     let config = config_file::load(args.config)?;
     let command: clap::Command = config.clone().into();
 
@@ -26,13 +32,35 @@ pub fn run(args: Args) -> anyhow::Result<()> {
     let (target_command, _) = resolve_subcommand(config, matches)?;
 
     // TODO:
-    // - Run the command
     // - Commit the clapfile with real project tasks
     // - Add tracing
     // - Derive args
     // - Pass args to the script
 
-    todo!("run command: {:?}", target_command);
+    let script = target_command
+        .run
+        .context("Config file does not specify a script to execute")?;
+
+    execute(&script)
+}
+
+/// Run a shell script and return the exit code. Stream stdin/stdout through the parent process.
+fn execute(script: &String) -> anyhow::Result<ExitCode> {
+    let status = Command::new(SHELL)
+        .arg("-c")
+        .arg(script)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()?;
+
+    let exit_code: u8 = status
+        .code()
+        .context("Process killed")?
+        .try_into()
+        .context("Unexpected exit code")?;
+
+    Ok(exit_code.into())
 }
 
 /// Figure out which command is being executed and find the corresponding `Config`. The config
