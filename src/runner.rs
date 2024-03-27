@@ -32,7 +32,6 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
     let (target_command, _) = resolve_subcommand(config, matches)?;
 
     // TODO:
-    // - Commit the clapfile with real project tasks
     // - Add tracing
     // - Derive args
     // - Pass args to the script
