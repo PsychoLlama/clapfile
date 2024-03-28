@@ -19,6 +19,29 @@
         (system: import nixpkgs { inherit system overlays; }));
 
     in {
+      packages = eachSystem (system: pkgs: {
+        clapfile = pkgs.rustPlatform.buildRustPackage {
+          pname = "clapfile";
+          cargoLock.lockFile = ./Cargo.lock;
+
+          version = pkgs.lib.pipe ./Cargo.toml [
+            builtins.readFile
+            builtins.fromTOML
+            (manifest: manifest.package.version)
+          ];
+
+          src = let fs = lib.fileset;
+          in fs.toSource {
+            root = ./.;
+            fileset = fs.unions [
+              (fs.fileFilter (f: f.hasExt "rs") ./src)
+              ./Cargo.lock
+              ./Cargo.toml
+            ];
+          };
+        };
+      });
+
       devShell = eachSystem (system: pkgs:
         pkgs.mkShell {
           packages =
