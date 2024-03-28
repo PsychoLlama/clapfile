@@ -3,7 +3,7 @@ about = "Project task runner"
 
 [subcommands.lint]
 about = "Run the linter"
-run = "cargo clippy --all-targets"
+run = "cargo clippy --all-targets --all-features"
 
 [subcommands.test]
 about = "Run project tests"

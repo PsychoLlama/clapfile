@@ -10,5 +10,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      - run: nix develop --command cargo test
-      - run: nix develop --command cargo clippy --all-targets --all-features
+      - run: nix develop --command project test
+      - run: nix develop --command project lint
