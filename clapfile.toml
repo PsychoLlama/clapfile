@@ -1,0 +1,10 @@
+name = "project"
+about = "Project task runner"
+
+[subcommands.lint]
+about = "Run the linter"
+run = "cargo clippy --all-targets"
+
+[subcommands.test]
+about = "Run project tests"
+run = "cargo test"
