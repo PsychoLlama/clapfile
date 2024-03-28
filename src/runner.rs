@@ -29,18 +29,19 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
     synthetic_argv.extend(args.rest);
 
     // Simply getting matches implements `--help` and friends.
-    let matches = command.get_matches_from(synthetic_argv);
-    let (target_command, _) = resolve_subcommand(config, matches)?;
+    let matches = command.clone().get_matches_from(synthetic_argv);
+    let (target_config, mut target_command, _) = resolve_subcommand(config, command, matches)?;
 
     // TODO:
     // - Derive args
     // - Pass args to the script
 
-    let script = target_command
-        .run
-        .context("Config file does not specify a script to execute")?;
-
-    execute(&script)
+    if let Some(script) = target_config.run {
+        execute(&script)
+    } else {
+        target_command.print_help()?;
+        Ok(ExitCode::FAILURE)
+    }
 }
 
 /// Run a shell script and return the exit code. Stream stdin/stdout through the parent process.
@@ -72,17 +73,27 @@ fn execute(script: &String) -> anyhow::Result<ExitCode> {
 /// carries instructions on how to run the command.
 fn resolve_subcommand(
     config: Config,
+    command: clap::Command,
     matches: clap::ArgMatches,
-) -> anyhow::Result<(Config, clap::ArgMatches)> {
+) -> anyhow::Result<(Config, clap::Command, clap::ArgMatches)> {
     if let (Some(subcommands), Some((command_name, submatches))) =
         (config.clone().subcommands, matches.subcommand())
     {
-        if let Some(subconfig) = subcommands.get(command_name) {
-            return resolve_subcommand(subconfig.to_owned(), submatches.to_owned());
+        if let (Some(subconfig), Some(subcommand)) = (
+            subcommands.get(command_name),
+            command
+                .get_subcommands()
+                .find(|c| c.get_name() == command_name),
+        ) {
+            return resolve_subcommand(
+                subconfig.to_owned(),
+                subcommand.to_owned(),
+                submatches.to_owned(),
+            );
         }
     }
 
-    Ok((config, matches))
+    Ok((config, command, matches))
 }
 
 #[cfg(test)]
@@ -108,11 +119,11 @@ mod tests {
         let config = cmd("root", vec![]);
 
         let command: clap::Command = config.clone().into();
-        let matches = command.get_matches_from(vec!["/cmd"]);
-        let (subcommand, _) =
-            resolve_subcommand(config, matches).expect("Could not resolve command");
+        let matches = command.clone().get_matches_from(vec!["/cmd"]);
+        let (subconfig, _, _) =
+            resolve_subcommand(config, command, matches).expect("Could not resolve command");
 
-        assert_eq!(subcommand.name, Some("root".into()));
+        assert_eq!(subconfig.name, Some("root".into()));
     }
 
     #[test]
@@ -123,11 +134,13 @@ mod tests {
         );
 
         let command: clap::Command = config.clone().into();
-        let matches = command.get_matches_from(vec!["/cmd", "child-command"]);
-        let (subcommand, _) =
-            resolve_subcommand(config, matches).expect("Could not resolve command");
+        let matches = command
+            .clone()
+            .get_matches_from(vec!["/cmd", "child-command"]);
+        let (subconfig, _, _) =
+            resolve_subcommand(config, command, matches).expect("Could not resolve command");
 
-        assert_eq!(subcommand.name, Some("child-command".into()));
+        assert_eq!(subconfig.name, Some("child-command".into()));
     }
 
     #[test]
@@ -147,10 +160,13 @@ mod tests {
         );
 
         let command: clap::Command = config.clone().into();
-        let matches = command.get_matches_from(vec!["/cmd", "child-command", "grandchild-command"]);
-        let (subcommand, _) =
-            resolve_subcommand(config, matches).expect("Could not resolve command");
+        let matches =
+            command
+                .clone()
+                .get_matches_from(vec!["/cmd", "child-command", "grandchild-command"]);
+        let (subconfig, _, _) =
+            resolve_subcommand(config, command, matches).expect("Could not resolve command");
 
-        assert_eq!(subcommand.name, Some("grandchild-command".into()));
+        assert_eq!(subconfig.name, Some("grandchild-command".into()));
     }
 }
