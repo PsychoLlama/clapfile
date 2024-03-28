@@ -15,6 +15,7 @@
 use std::process::ExitCode;
 
 use clap::Parser;
+use tracing_subscriber::FmtSubscriber;
 
 mod completions;
 mod config_file;
@@ -25,6 +26,10 @@ mod runner;
 struct Args {
     #[clap(subcommand)]
     command: Command,
+
+    /// Enable logging at the specified level.
+    #[arg(long, global = true)]
+    log_level: Option<tracing::Level>,
 }
 
 #[derive(Parser, Debug)]
@@ -40,6 +45,12 @@ enum Command {
 
 fn main() -> anyhow::Result<ExitCode> {
     let args = Args::parse();
+
+    if let Some(log_level) = args.log_level {
+        tracing::subscriber::set_global_default(
+            FmtSubscriber::builder().with_max_level(log_level).finish(),
+        )?;
+    }
 
     match args.command {
         Command::Completions(comp_args) => completions::gen_to_stdout(comp_args),

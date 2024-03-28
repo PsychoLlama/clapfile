@@ -18,11 +18,14 @@ pub struct Config {
 }
 
 /// Load the configuration file and convert it to a `clap::Command`.
-#[allow(dead_code)]
+#[tracing::instrument]
 pub fn load(config_file: OsString) -> anyhow::Result<Config> {
+    tracing::info!(?config_file, "Reading config");
+
     let config_contents =
         std::fs::read_to_string(config_file).context("Failed to load config file")?;
 
+    tracing::info!("Parsing config");
     Ok(serde_yaml::from_str::<Config>(&config_contents)?)
 }
 

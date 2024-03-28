@@ -20,6 +20,7 @@ pub struct Args {
     rest: Vec<OsString>,
 }
 
+#[tracing::instrument]
 pub fn run(args: Args) -> anyhow::Result<ExitCode> {
     let config = config_file::load(args.config)?;
     let command: clap::Command = config.clone().into();
@@ -32,7 +33,6 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
     let (target_command, _) = resolve_subcommand(config, matches)?;
 
     // TODO:
-    // - Add tracing
     // - Derive args
     // - Pass args to the script
 
@@ -45,6 +45,9 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
 
 /// Run a shell script and return the exit code. Stream stdin/stdout through the parent process.
 fn execute(script: &String) -> anyhow::Result<ExitCode> {
+    tracing::info!(script, "Executing shell script");
+
+    let start_time = std::time::Instant::now();
     let status = Command::new(SHELL)
         .arg("-c")
         .arg(script)
@@ -58,6 +61,9 @@ fn execute(script: &String) -> anyhow::Result<ExitCode> {
         .context("Process killed")?
         .try_into()
         .context("Unexpected exit code")?;
+
+    let duration = start_time.elapsed().as_millis();
+    tracing::info!(exit_code, duration, "Shell script finished");
 
     Ok(exit_code.into())
 }
