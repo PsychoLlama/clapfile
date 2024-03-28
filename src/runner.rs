@@ -7,8 +7,6 @@ use std::{
 
 use crate::config_file::{self, Config};
 
-const SHELL: &str = "sh";
-
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Configuration file.
@@ -18,6 +16,10 @@ pub struct Args {
     /// Arguments to pass to the CLI.
     #[arg(last = true)]
     rest: Vec<OsString>,
+
+    /// Shell used to execute scripts.
+    #[arg(long, default_value = "sh")]
+    shell: String,
 }
 
 #[tracing::instrument]
@@ -37,7 +39,7 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
     // - Pass args to the script
 
     if let Some(script) = target_config.run {
-        execute(&script)
+        execute(&args.shell, &script)
     } else {
         target_command.print_help()?;
         Ok(ExitCode::FAILURE)
@@ -45,11 +47,11 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
 }
 
 /// Run a shell script and return the exit code. Stream stdin/stdout through the parent process.
-fn execute(script: &String) -> anyhow::Result<ExitCode> {
+fn execute(shell: &str, script: &String) -> anyhow::Result<ExitCode> {
     tracing::info!(script, "Executing shell script");
 
     let start_time = std::time::Instant::now();
-    let status = Command::new(SHELL)
+    let status = Command::new(shell)
         .arg("-c")
         .arg(script)
         .stdin(Stdio::inherit())

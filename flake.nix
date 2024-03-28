@@ -75,8 +75,13 @@
 
                 # TODO: Generate shell completions.
 
-                wrapProgram "$out/bin/${config.name}" --add-flags "run --config ${
-                  (pkgs.formats.yaml { }).generate "${config.name}.yml" config
+                wrapProgram "$out/bin/${config.name}" --add-flags "run ${
+                  lib.cli.toGNUCommandLineShell { } {
+                    shell = "${pkgs.dash}/bin/dash";
+                    config =
+                      (pkgs.formats.yaml { }).generate "${config.name}.yml"
+                      config;
+                  }
                 } --"
               '';
             };
