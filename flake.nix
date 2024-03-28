@@ -18,6 +18,18 @@
       eachSystem = lib.flip lib.mapAttrs (lib.genAttrs systems
         (system: import nixpkgs { inherit system overlays; }));
 
+      makeRustToolchain = pkgs:
+        pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+
+      # Compile using the pinned Rust toolchain. This prevents CI from
+      # installing two versions of Rust.
+      buildPinnedRustPackage = pkgs:
+        let toolchain = makeRustToolchain pkgs;
+        in lib.getAttr "buildRustPackage" (pkgs.makeRustPlatform {
+          cargo = toolchain;
+          rustc = toolchain;
+        });
+
     in {
       overlays = rec {
         default = programs;
@@ -26,7 +38,7 @@
       };
 
       packages = eachSystem (system: pkgs: rec {
-        clapfile = pkgs.rustPlatform.buildRustPackage {
+        clapfile = buildPinnedRustPackage pkgs {
           pname = "clapfile";
           cargoLock.lockFile = ./Cargo.lock;
 
@@ -44,6 +56,12 @@
               ./Cargo.lock
               ./Cargo.toml
             ];
+          };
+
+          meta = {
+            description = "A declarative CLI generator";
+            homepage = "https://github.com/PsychoLlama/clapfile";
+            license = lib.licenses.mit;
           };
 
           passthru.wrapper = config:
@@ -68,7 +86,7 @@
       devShell = eachSystem (system: pkgs:
         pkgs.mkShell {
           packages = [
-            (pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
+            (makeRustToolchain pkgs)
             (pkgs.clapfile)
             (pkgs.clapfile.wrapper (pkgs.lib.pipe ./clapfile.toml [
               builtins.readFile
