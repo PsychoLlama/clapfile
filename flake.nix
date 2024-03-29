@@ -79,7 +79,7 @@
                   lib.cli.toGNUCommandLineShell { } {
                     shell = "${pkgs.dash}/bin/dash";
                     config =
-                      (pkgs.formats.yaml { }).generate "${config.name}.yml"
+                      (pkgs.formats.toml { }).generate "${config.name}.toml"
                       config;
                   }
                 } --"

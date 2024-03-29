@@ -26,7 +26,7 @@ pub fn load(config_file: OsString) -> anyhow::Result<Config> {
         std::fs::read_to_string(config_file).context("Failed to load config file")?;
 
     tracing::info!("Parsing config");
-    Ok(serde_yaml::from_str::<Config>(&config_contents)?)
+    Ok(toml::from_str::<Config>(&config_contents)?)
 }
 
 impl From<Config> for Command {
