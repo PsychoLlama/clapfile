@@ -6,31 +6,39 @@ use std::{collections::HashMap, ffi::OsString};
 /// Configuration file structure. Fields mirror those of `clap::Command`.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Default))]
-pub struct Config {
+pub struct CommandConfig {
     pub name: Option<String>,
     pub about: Option<String>,
     pub version: Option<String>,
-    pub subcommands: Option<HashMap<String, Config>>,
+    pub subcommands: Option<HashMap<String, CommandConfig>>,
+    pub args: Option<HashMap<String, ArgumentConfig>>,
 
     /// This is the script that gets executed when the command runs. It can be a path to an
     /// executable file or a shell command.
     pub run: Option<String>,
 }
 
-/// Load the configuration file and convert it to a `clap::Command`.
-#[tracing::instrument]
-pub fn load(config_file: OsString) -> anyhow::Result<Config> {
-    tracing::info!(?config_file, "Reading config");
-
-    let config_contents =
-        std::fs::read_to_string(config_file).context("Failed to load config file")?;
-
-    tracing::info!("Parsing config");
-    Ok(toml::from_str::<Config>(&config_contents)?)
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(test, derive(Default))]
+pub struct ArgumentConfig {
+    pub id: Option<String>,
+    pub required: Option<bool>,
 }
 
-impl From<Config> for Command {
-    fn from(config: Config) -> Command {
+/// Load the configuration file and convert it to a `clap::Command`.
+#[tracing::instrument]
+pub fn load(file_path: OsString) -> anyhow::Result<CommandConfig> {
+    tracing::info!(?file_path, "Reading config");
+
+    let config_contents =
+        std::fs::read_to_string(file_path).context("Failed to load config file")?;
+
+    tracing::info!("Parsing config");
+    Ok(toml::from_str::<CommandConfig>(&config_contents)?)
+}
+
+impl From<CommandConfig> for clap::Command {
+    fn from(config: CommandConfig) -> Command {
         let mut command = Command::new(config.name.unwrap_or_default());
 
         /* --- Set Metadata --- */
@@ -41,6 +49,21 @@ impl From<Config> for Command {
 
         if let Some(version) = config.version {
             command = command.version(version);
+        }
+
+        /* --- Register Arguments --- */
+
+        if let Some(args) = config.args {
+            for (name, arg) in args {
+                let mut argument: clap::Arg = arg.into();
+
+                // Inherit argument name from hashmap key if unset.
+                if argument.get_id() == "" {
+                    argument = argument.id(name);
+                }
+
+                command = command.arg(argument);
+            }
         }
 
         /* --- Register Subcommands --- */
@@ -62,6 +85,18 @@ impl From<Config> for Command {
     }
 }
 
+impl From<ArgumentConfig> for clap::Arg {
+    fn from(conf: ArgumentConfig) -> clap::Arg {
+        let mut arg = clap::Arg::new(conf.id.unwrap_or_default());
+
+        if let Some(required) = conf.required {
+            arg = arg.required(required);
+        }
+
+        arg
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -69,9 +104,9 @@ mod tests {
 
     #[test]
     fn test_simple_command() {
-        let app = Config {
+        let app = CommandConfig {
             name: Some(String::from("cmd-test")),
-            ..Config::default()
+            ..CommandConfig::default()
         };
 
         let command: Command = app.into();
@@ -80,9 +115,9 @@ mod tests {
 
     #[test]
     fn test_command_description() {
-        let app = Config {
+        let app = CommandConfig {
             about: Some(String::from("test command")),
-            ..Config::default()
+            ..CommandConfig::default()
         };
 
         let command: Command = app.into();
@@ -91,9 +126,9 @@ mod tests {
 
     #[test]
     fn test_command_version() {
-        let app = Config {
+        let app = CommandConfig {
             version: Some(String::from("0.1.0")),
-            ..Config::default()
+            ..CommandConfig::default()
         };
 
         let command: Command = app.into();
@@ -102,15 +137,15 @@ mod tests {
 
     #[test]
     fn test_subcommand_exists() {
-        let app = Config {
+        let app = CommandConfig {
             subcommands: Some(HashMap::from_iter(vec![(
                 String::from("example"),
-                Config {
+                CommandConfig {
                     run: Some("echo test".into()),
-                    ..Config::default()
+                    ..CommandConfig::default()
                 },
             )])),
-            ..Config::default()
+            ..CommandConfig::default()
         };
 
         let command: Command = app.into();
@@ -123,16 +158,16 @@ mod tests {
 
     #[test]
     fn test_subcommand_name_override() {
-        let app = Config {
+        let app = CommandConfig {
             subcommands: Some(HashMap::from_iter(vec![(
                 String::from("example"),
-                Config {
+                CommandConfig {
                     name: Some(String::from("example-override")),
                     run: Some("echo test".into()),
-                    ..Config::default()
+                    ..CommandConfig::default()
                 },
             )])),
-            ..Config::default()
+            ..CommandConfig::default()
         };
 
         let command: Command = app.into();
@@ -141,5 +176,52 @@ mod tests {
             .find(|command| command.get_name() == "example-override");
 
         assert!(example.is_some());
+    }
+
+    #[test]
+    fn test_simple_argument_instantiation() {
+        let conf = ArgumentConfig {
+            id: Some("random".into()),
+            ..ArgumentConfig::default()
+        };
+
+        let arg: clap::Arg = conf.into();
+        assert_eq!(arg.get_id(), "random");
+    }
+
+    #[test]
+    fn test_argument_id_default() {
+        let conf = ArgumentConfig::default();
+        let arg: clap::Arg = conf.into();
+        assert_eq!(arg.get_id(), "");
+    }
+
+    #[test]
+    fn test_argument_id_inheritance() {
+        let app = CommandConfig {
+            args: Some(HashMap::from_iter(vec![(
+                String::from("some-arg"),
+                ArgumentConfig::default(),
+            )])),
+            ..CommandConfig::default()
+        };
+
+        let command: Command = app.into();
+        let arg = command
+            .get_arguments()
+            .find(|arg| arg.get_id() == "some-arg");
+
+        assert_eq!(arg.map(|a| a.get_id().as_ref()), Some("some-arg"));
+    }
+
+    #[test]
+    fn test_argument_required_setting() {
+        let conf = ArgumentConfig {
+            required: Some(true),
+            ..ArgumentConfig::default()
+        };
+
+        let arg: clap::Arg = conf.into();
+        assert!(arg.is_required_set());
     }
 }

@@ -5,7 +5,7 @@ use std::{
     process::{Command, ExitCode, Stdio},
 };
 
-use crate::config_file::{self, Config};
+use crate::config_file::{self, CommandConfig};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -74,10 +74,10 @@ fn execute(shell: &str, script: &String) -> anyhow::Result<ExitCode> {
 /// Figure out which command is being executed and find the corresponding `Config`. The config
 /// carries instructions on how to run the command.
 fn resolve_subcommand(
-    config: Config,
+    config: CommandConfig,
     command: clap::Command,
     matches: clap::ArgMatches,
-) -> anyhow::Result<(Config, clap::Command, clap::ArgMatches)> {
+) -> anyhow::Result<(CommandConfig, clap::Command, clap::ArgMatches)> {
     if let (Some(subcommands), Some((command_name, submatches))) =
         (config.clone().subcommands, matches.subcommand())
     {
@@ -104,8 +104,8 @@ mod tests {
 
     use super::*;
 
-    fn cmd(name: &str, subcommands: Vec<(String, Config)>) -> Config {
-        Config {
+    fn cmd(name: &str, subcommands: Vec<(String, CommandConfig)>) -> CommandConfig {
+        CommandConfig {
             name: Some(name.into()),
             subcommands: if subcommands.is_empty() {
                 None
