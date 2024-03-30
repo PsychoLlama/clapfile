@@ -11,7 +11,9 @@ pub struct CommandConfig {
     pub about: Option<String>,
     pub version: Option<String>,
     pub subcommands: Option<HashMap<String, CommandConfig>>,
-    pub args: Option<HashMap<String, ArgumentConfig>>,
+
+    // Must be a vec because positional parameters expect order.
+    pub args: Option<Vec<ArgumentConfig>>,
 
     /// This is the script that gets executed when the command runs. It can be a path to an
     /// executable file or a shell command.
@@ -21,7 +23,7 @@ pub struct CommandConfig {
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(test, derive(Default))]
 pub struct ArgumentConfig {
-    pub id: Option<String>,
+    pub id: String,
     pub required: Option<bool>,
 }
 
@@ -53,32 +55,21 @@ impl From<CommandConfig> for clap::Command {
 
         /* --- Register Arguments --- */
 
-        if let Some(args) = config.args {
-            for (name, arg) in args {
-                let mut argument: clap::Arg = arg.into();
-
-                // Inherit argument name from hashmap key if unset.
-                if argument.get_id() == "" {
-                    argument = argument.id(name);
-                }
-
-                command = command.arg(argument);
-            }
+        for argument in config.args.unwrap_or_default() {
+            command = command.arg(Into::<clap::Arg>::into(argument));
         }
 
         /* --- Register Subcommands --- */
 
-        if let Some(subcommands) = config.subcommands {
-            for (name, script) in subcommands {
-                let mut subcommand: Command = script.into();
+        for (name, script) in config.subcommands.unwrap_or_default() {
+            let mut subcommand: Command = script.into();
 
-                // Inherit command name from hashmap key if unset.
-                if subcommand.get_name() == "" {
-                    subcommand = subcommand.name(name);
-                }
-
-                command = command.subcommand(subcommand);
+            // Inherit command name from hashmap key if unset.
+            if subcommand.get_name() == "" {
+                subcommand = subcommand.name(name);
             }
+
+            command = command.subcommand(subcommand);
         }
 
         command
@@ -87,7 +78,7 @@ impl From<CommandConfig> for clap::Command {
 
 impl From<ArgumentConfig> for clap::Arg {
     fn from(conf: ArgumentConfig) -> clap::Arg {
-        let mut arg = clap::Arg::new(conf.id.unwrap_or_default());
+        let mut arg = clap::Arg::new(conf.id);
 
         if let Some(required) = conf.required {
             arg = arg.required(required);
@@ -181,7 +172,7 @@ mod tests {
     #[test]
     fn test_simple_argument_instantiation() {
         let conf = ArgumentConfig {
-            id: Some("random".into()),
+            id: "random".into(),
             ..ArgumentConfig::default()
         };
 
@@ -194,24 +185,6 @@ mod tests {
         let conf = ArgumentConfig::default();
         let arg: clap::Arg = conf.into();
         assert_eq!(arg.get_id(), "");
-    }
-
-    #[test]
-    fn test_argument_id_inheritance() {
-        let app = CommandConfig {
-            args: Some(HashMap::from_iter(vec![(
-                String::from("some-arg"),
-                ArgumentConfig::default(),
-            )])),
-            ..CommandConfig::default()
-        };
-
-        let command: Command = app.into();
-        let arg = command
-            .get_arguments()
-            .find(|arg| arg.get_id() == "some-arg");
-
-        assert_eq!(arg.map(|a| a.get_id().as_ref()), Some("some-arg"));
     }
 
     #[test]
