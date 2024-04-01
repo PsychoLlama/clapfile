@@ -1,11 +1,15 @@
 use anyhow::Context;
 use clap::Parser;
 use std::{
+    collections::HashMap,
     ffi::OsString,
     process::{Command, ExitCode, Stdio},
 };
 
-use crate::config_file::{self, CommandConfig};
+use crate::{
+    config_file::{self, CommandConfig},
+    exporters::to_env_record,
+};
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -32,14 +36,12 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
 
     // Simply getting matches implements `--help` and friends.
     let matches = command.clone().get_matches_from(synthetic_argv);
-    let (target_config, mut target_command, _) = resolve_subcommand(config, command, matches)?;
-
-    // TODO:
-    // - Derive args
-    // - Pass args to the script
+    let (target_config, mut target_command, target_matches) =
+        resolve_subcommand(config, command, matches)?;
 
     if let Some(script) = target_config.run {
-        execute(&args.shell, &script)
+        let env = to_env_record(&target_config.args.unwrap_or_default(), &target_matches);
+        execute(&args.shell, &script, env)
     } else {
         target_command.print_help()?;
         Ok(ExitCode::FAILURE)
@@ -47,13 +49,18 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
 }
 
 /// Run a shell script and return the exit code. Stream stdin/stdout through the parent process.
-fn execute(shell: &str, script: &String) -> anyhow::Result<ExitCode> {
+fn execute(
+    shell: &str,
+    script: &String,
+    env: HashMap<OsString, OsString>,
+) -> anyhow::Result<ExitCode> {
     tracing::info!(script, "Executing shell script");
 
     let start_time = std::time::Instant::now();
     let status = Command::new(shell)
         .arg("-c")
         .arg(script)
+        .envs(env)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())

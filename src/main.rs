@@ -19,6 +19,7 @@ use tracing_subscriber::FmtSubscriber;
 
 mod completions;
 mod config_file;
+mod exporters;
 mod runner;
 
 #[derive(Parser, Debug)]
