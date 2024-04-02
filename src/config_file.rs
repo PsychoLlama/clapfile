@@ -25,6 +25,10 @@ pub struct CommandConfig {
 pub struct ArgumentConfig {
     pub id: String,
     pub required: Option<bool>,
+    pub long: Option<String>,
+    pub short: Option<char>,
+    pub value_name: Option<String>,
+    pub aliases: Option<Vec<String>>,
 }
 
 /// Load the configuration file and convert it to a `clap::Command`.
@@ -78,11 +82,25 @@ impl From<CommandConfig> for clap::Command {
 
 impl From<ArgumentConfig> for clap::Arg {
     fn from(conf: ArgumentConfig) -> clap::Arg {
-        let mut arg = clap::Arg::new(conf.id);
+        let mut arg = clap::Arg::new(conf.id).aliases(conf.aliases.unwrap_or_default());
 
         if let Some(required) = conf.required {
             arg = arg.required(required);
         }
+
+        if let Some(long) = conf.long {
+            arg = arg.long(long);
+        }
+
+        if let Some(short) = conf.short {
+            arg = arg.short(short);
+        }
+
+        if let Some(value_name) = conf.value_name {
+            arg = arg.value_name(value_name);
+        }
+
+        // TODO: default_value, requires, group, help, env, ...
 
         arg
     }
@@ -196,5 +214,37 @@ mod tests {
 
         let arg: clap::Arg = conf.into();
         assert!(arg.is_required_set());
+    }
+
+    #[test]
+    fn test_arg_long_short_flags() {
+        let conf = ArgumentConfig {
+            long: Some("full".into()),
+            short: Some('s'),
+            ..ArgumentConfig::default()
+        };
+
+        let arg: clap::Arg = conf.into();
+        assert_eq!(arg.get_long(), Some("full"));
+        assert_eq!(arg.get_short(), Some('s'));
+    }
+
+    #[test]
+    fn test_arg_aliases() {
+        let conf = ArgumentConfig {
+            id: String::from("id"),
+            aliases: Some(vec!["alias".into()]),
+            long: Some("long".into()),
+            ..ArgumentConfig::default()
+        };
+
+        let app = CommandConfig {
+            args: Some(vec![conf]),
+            ..CommandConfig::default()
+        };
+
+        let command: clap::Command = app.into();
+        let matches = command.get_matches_from(vec!["test", "--alias", "test"]);
+        assert_eq!(matches.get_one::<String>("id"), Some(&"test".to_string()));
     }
 }
