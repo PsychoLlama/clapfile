@@ -29,6 +29,11 @@ pub struct ArgumentConfig {
     pub short: Option<char>,
     pub value_name: Option<String>,
     pub aliases: Option<Vec<String>>,
+    pub default_value: Option<String>,
+    pub env: Option<String>,
+    pub help: Option<String>,
+    pub requires: Option<String>,
+    pub group: Option<String>,
 }
 
 /// Load the configuration file and convert it to a `clap::Command`.
@@ -100,7 +105,27 @@ impl From<ArgumentConfig> for clap::Arg {
             arg = arg.value_name(value_name);
         }
 
-        // TODO: default_value, requires, group, help, env, ...
+        if let Some(default_value) = conf.default_value {
+            arg = arg.default_value(default_value);
+        }
+
+        if let Some(env) = conf.env {
+            arg = arg.env(env);
+        }
+
+        if let Some(help) = conf.help {
+            arg = arg.help(help);
+        }
+
+        if let Some(requires) = conf.requires {
+            arg = arg.requires(requires);
+        }
+
+        if let Some(group) = conf.group {
+            arg = arg.group(group);
+        }
+
+        // TODO: Arg::last
 
         arg
     }
@@ -246,5 +271,24 @@ mod tests {
         let command: clap::Command = app.into();
         let matches = command.get_matches_from(vec!["test", "--alias", "test"]);
         assert_eq!(matches.get_one::<String>("id"), Some(&"test".to_string()));
+    }
+
+    #[test]
+    fn test_default_values() {
+        let app = CommandConfig {
+            args: Some(vec![ArgumentConfig {
+                id: "id".into(),
+                default_value: Some("default".into()),
+                ..ArgumentConfig::default()
+            }]),
+            ..CommandConfig::default()
+        };
+
+        let command: Command = app.into();
+        let matches = command.get_matches_from(vec!["test"]);
+        assert_eq!(
+            matches.get_one::<String>("id"),
+            Some(&"default".to_string())
+        );
     }
 }
