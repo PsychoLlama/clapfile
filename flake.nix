@@ -64,25 +64,39 @@
             license = lib.licenses.mit;
           };
 
-          passthru.wrapper = config:
-            pkgs.stdenvNoCC.mkDerivation {
-              name = config.name;
+          passthru.wrapper = args: cmd:
+            let
+              toml = pkgs.formats.toml { };
+              configFileName = "${cmd.name}.toml";
+              configFile = toml.generate configFileName cmd;
+              runtimeFlags = lib.cli.toGNUCommandLineShell { } ({
+                shell = "${pkgs.dash}/bin/dash";
+                config = configFile;
+              } // args);
+
+            in pkgs.stdenvNoCC.mkDerivation {
+              pname = cmd.name;
+              version = cmd.version or "latest";
               buildInputs = [ clapfile pkgs.makeWrapper ];
               phases = [ "buildPhase" ];
               buildPhase = ''
                 mkdir -p "$out/bin"
-                install -Dm755 "$(command -v clapfile)" "$out/bin/${config.name}"
+                install -Dm755 "$(command -v clapfile)" "$out/bin/${cmd.name}"
 
-                # TODO: Generate shell completions.
+                # Generate shell completions
+                function gen_completions {
+                  clapfile completions --config ${configFile} "$1"
+                }
 
-                wrapProgram "$out/bin/${config.name}" --add-flags "run ${
-                  lib.cli.toGNUCommandLineShell { } {
-                    shell = "${pkgs.dash}/bin/dash";
-                    config =
-                      (pkgs.formats.toml { }).generate "${config.name}.toml"
-                      config;
-                  }
-                } --"
+                mkdir -p "$out/share/bash-completion/completions"
+                mkdir -p "$out/share/fish/vendor_completions.d"
+                mkdir -p "$out/share/zsh/site-functions"
+
+                gen_completions bash > "$out/share/bash-completion/completions/${cmd.name}"
+                gen_completions fish > "$out/share/fish/vendor_completions.d/${cmd.name}.fish"
+                gen_completions zsh >  "$out/share/zsh/site-functions/_${cmd.name}"
+
+                wrapProgram "$out/bin/${cmd.name}" --add-flags "run ${runtimeFlags} --"
               '';
             };
         };
@@ -93,7 +107,7 @@
           packages = [
             (makeRustToolchain pkgs)
             (pkgs.clapfile)
-            (pkgs.clapfile.wrapper (pkgs.lib.pipe ./clapfile.toml [
+            (pkgs.clapfile.wrapper { } (pkgs.lib.pipe ./clapfile.toml [
               builtins.readFile
               builtins.fromTOML
             ]))
