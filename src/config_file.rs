@@ -32,6 +32,7 @@ pub struct ArgumentConfig {
     pub default_value: Option<String>,
     pub env: Option<String>,
     pub help: Option<String>,
+    pub long_help: Option<String>,
     pub requires: Option<String>,
     pub group: Option<String>,
     pub last: Option<bool>,
@@ -118,6 +119,10 @@ impl From<ArgumentConfig> for clap::Arg {
 
         if let Some(help) = conf.help {
             arg = arg.help(help);
+        }
+
+        if let Some(long_help) = conf.long_help {
+            arg = arg.long_help(long_help);
         }
 
         if let Some(requires) = conf.requires {
