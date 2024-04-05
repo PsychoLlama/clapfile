@@ -34,6 +34,7 @@ pub struct ArgumentConfig {
     pub help: Option<String>,
     pub requires: Option<String>,
     pub group: Option<String>,
+    pub last: Option<bool>,
 }
 
 /// Load the configuration file and convert it to a `clap::Command`.
@@ -87,7 +88,9 @@ impl From<CommandConfig> for clap::Command {
 
 impl From<ArgumentConfig> for clap::Arg {
     fn from(conf: ArgumentConfig) -> clap::Arg {
-        let mut arg = clap::Arg::new(conf.id).aliases(conf.aliases.unwrap_or_default());
+        let mut arg = clap::Arg::new(conf.id)
+            .aliases(conf.aliases.unwrap_or_default())
+            .last(conf.last.unwrap_or_default());
 
         if let Some(required) = conf.required {
             arg = arg.required(required);
@@ -124,8 +127,6 @@ impl From<ArgumentConfig> for clap::Arg {
         if let Some(group) = conf.group {
             arg = arg.group(group);
         }
-
-        // TODO: Arg::last
 
         arg
     }
@@ -290,5 +291,22 @@ mod tests {
             matches.get_one::<String>("id"),
             Some(&"default".to_string())
         );
+    }
+
+    #[test]
+    fn test_last_argument() {
+        let app = CommandConfig {
+            args: Some(vec![ArgumentConfig {
+                id: "arg".into(),
+                last: Some(true),
+                ..ArgumentConfig::default()
+            }]),
+            ..CommandConfig::default()
+        };
+
+        let command: Command = app.into();
+        let matches = command.get_matches_from(vec!["test", "--", "value"]);
+
+        assert_eq!(matches.get_one::<String>("arg"), Some(&"value".to_string()));
     }
 }
