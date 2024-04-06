@@ -43,6 +43,7 @@ pub fn run(args: Args) -> anyhow::Result<ExitCode> {
         let env = to_env_record(&target_config.args.unwrap_or_default(), &target_matches);
         execute(&args.shell, &script, env)
     } else {
+        tracing::info!("No script to run. Showing help instead.");
         target_command.print_help()?;
         Ok(ExitCode::FAILURE)
     }

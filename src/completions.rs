@@ -7,7 +7,6 @@ use crate::config_file;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Target shell.
-    #[arg()]
     shell: Shell,
 
     /// Configuration file.
