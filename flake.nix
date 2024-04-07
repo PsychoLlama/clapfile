@@ -64,7 +64,7 @@
             license = lib.licenses.mit;
           };
 
-          passthru.wrapper = args: cmd:
+          passthru.command = args: cmd:
             let
               toml = pkgs.formats.toml { };
               configFileName = "${cmd.name}.toml";
@@ -107,7 +107,7 @@
           packages = [
             (makeRustToolchain pkgs)
             (pkgs.clapfile)
-            (pkgs.clapfile.wrapper { } (pkgs.lib.pipe ./clapfile.toml [
+            (pkgs.clapfile.command { } (pkgs.lib.pipe ./clapfile.toml [
               builtins.readFile
               builtins.fromTOML
             ]))
