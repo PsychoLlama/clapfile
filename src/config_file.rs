@@ -93,6 +93,8 @@ impl From<ArgumentConfig> for clap::Arg {
             .aliases(conf.aliases.unwrap_or_default())
             .last(conf.last.unwrap_or_default());
 
+        // TODO: Make arguments optional for boolean types.
+
         if let Some(required) = conf.required {
             arg = arg.required(required);
         }
