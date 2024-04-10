@@ -33,11 +33,20 @@
     in {
       overlays = rec {
         default = programs;
+
+        # Add `clapfile` to nixpkgs.
         programs =
           (_: super: { clapfile = self.packages.${super.system}.clapfile; });
       };
 
-      packages = eachSystem (system: pkgs: rec {
+      nixosModules = rec {
+        default = clapfile;
+
+        # Generate a CLI using the NixOS module system.
+        clapfile = import ./nix/module.nix;
+      };
+
+      packages = eachSystem (system: pkgs: {
         clapfile = buildPinnedRustPackage pkgs {
           pname = "clapfile";
           cargoLock.lockFile = ./Cargo.lock;
@@ -64,38 +73,15 @@
             license = lib.licenses.mit;
           };
 
+          # Generate a `clapfile` executable. Suitable for nix shells.
           passthru.command = config:
             let
-              options =
-                import ./nix/make-command.nix { inherit lib pkgs config; };
+              root = lib.evalModules {
+                modules = [ ./nix/module.nix config ];
+                specialArgs.pkgs = pkgs;
+              };
 
-            in pkgs.stdenvNoCC.mkDerivation {
-              pname = options.name;
-              version = options.command.version or "latest";
-              buildInputs = [ clapfile pkgs.makeWrapper ];
-              phases = [ "buildPhase" ];
-              buildPhase = ''
-                mkdir -p "$out/bin"
-                install -Dm755 "$(command -v clapfile)" "$out/bin/${options.name}"
-
-                # Generate shell completions
-                function gen_completions {
-                  clapfile completions --config ${options.args.config} "$1"
-                }
-
-                mkdir -p "$out/share/bash-completion/completions"
-                mkdir -p "$out/share/fish/vendor_completions.d"
-                mkdir -p "$out/share/zsh/site-functions"
-
-                gen_completions bash > "$out/share/bash-completion/completions/${options.name}"
-                gen_completions fish > "$out/share/fish/vendor_completions.d/${options.name}.fish"
-                gen_completions zsh >  "$out/share/zsh/site-functions/_${options.name}"
-
-                wrapProgram "$out/bin/${options.name}" --add-flags "run ${
-                  lib.cli.toGNUCommandLineShell { } options.args
-                } --"
-              '';
-            };
+            in root.config.program;
         };
       });
 
