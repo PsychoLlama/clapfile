@@ -57,23 +57,27 @@ This is just to get started quickly. The Nix wrapper has all the bells and whist
 
 ```nix
 clapfile.command {
+  args = {
     # Optional: extra options passed to `clapfile run`
-} {
-  name = "project";
-  about = "Project task runner";
-  subcommands = {
-    lint = {
-      about = "Lint the project";
-      run = pkgs.writers.writeBash "lint-project" ''
-        echo "Linting..."
-      '';
-    };
+  };
 
-    test = {
-      about = "Run the test suite";
-      run = pkgs.writers.writePython3 "run-tests" { } ''
-        print("Running tests...")
-      '';
+  command = {
+    name = "project";
+    about = "Project task runner";
+    subcommands = {
+      lint = {
+        about = "Lint the project";
+        run = pkgs.writers.writeBash "lint-project" ''
+          echo "Linting..."
+        '';
+      };
+
+      test = {
+        about = "Run the test suite";
+        run = pkgs.writers.writePython3 "run-tests" { } ''
+          print("Running tests...")
+        '';
+      };
     };
   };
 }
@@ -110,8 +114,12 @@ This is only available as a Nix flake for now.
   outputs = { self, clapfile }: {
     devShell = eachSystem (system: pkgs: pkgs.mkShell {
       packages = [
-        (clapfile.packages.${system}.clapfile.command { } {
-          name = "example";
+        (clapfile.packages.${system}.clapfile.command {
+          args.shell = "${pkgs.bash}/bin/bash";
+          command = {
+            name = "example";
+            run = "echo 'Hello, world!'";
+          };
         })
       ];
     });
