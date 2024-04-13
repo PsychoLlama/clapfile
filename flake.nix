@@ -40,10 +40,13 @@
       };
 
       nixosModules = rec {
-        default = clapfile;
+        default = nixos;
 
         # Generate a CLI using the NixOS module system.
-        clapfile = import ./nix/module.nix;
+        clapfile = import ./nix/bare-module.nix;
+
+        # Mount `clapfile` into the NixOS module hierarchy.
+        nixos = import ./nix/nixos-module.nix;
       };
 
       packages = eachSystem (system: pkgs: {
@@ -77,7 +80,7 @@
           passthru.command = config:
             let
               root = lib.evalModules {
-                modules = [ ./nix/module.nix config ];
+                modules = [ ./nix/bare-module.nix config ];
                 specialArgs.pkgs = pkgs;
               };
 
