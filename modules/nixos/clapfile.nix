@@ -10,7 +10,7 @@
     type = lib.types.submoduleWith {
       specialArgs.pkgs = pkgs;
       modules = [
-        (import ./bare-module.nix)
+        (import ../bare-module.nix)
         { options.enable = lib.mkEnableOption "Add to system packages"; }
       ];
     };

@@ -8,3 +8,10 @@ run = "cargo clippy --all-targets --all-features"
 [subcommands.test]
 about = "Run project tests"
 run = "cargo test"
+
+[subcommands.e2e]
+about = "Run E2E test set"
+run = 'nix build ".#checks.x86_64-linux.e2e${interactive:+.driver}"'
+args = [
+  { id = "interactive", long = "interactive", short = "i", help = "Compile test to run interactively" }
+]

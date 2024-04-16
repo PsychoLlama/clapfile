@@ -12,3 +12,4 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - run: nix develop --command project test
       - run: nix develop --command project lint
+      - run: nix develop --command project e2e
