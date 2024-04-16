@@ -16,7 +16,7 @@ Managed systems usually have maintenance scripts that run manually, like initial
 
 Over time scripts become less discoverable. They are scattered across the filesystem, have different interfaces, and different levels of `--help`.
 
-Clapfile is like a task runner. It combines them under a single interface. You define subcommands, the script to execute, the options it accepts, and clapfile wraps them into in a single command.
+Clapfile is kind of like a task runner. It combines them under a single interface. You define subcommands, the script to execute, the options it accepts, and clapfile wraps them into in a single command.
 
 This buys you some advantages:
 
@@ -53,10 +53,44 @@ clapfile run --config clapfile.toml -- greet world
 
 The `run` key is a shell command to execute. Any arguments defined are passed through as environment variables.
 
-This is just to get started quickly. The Nix wrapper has all the bells and whistles. It's the "recommended" way to use clapfile.
+This is just to get started quickly. The Nix wrapper has all the bells and whistles. It's the recommended way to use clapfile.
+
+## Installation
+
+This package is only available as a Nix flake. To quickly try it, run:
+
+```bash
+nix run 'github:PsychoLlama/clapfile'
+```
+
+Or programmatically by adding it to your `flake.nix`:
 
 ```nix
-clapfile.command {
+{
+  inputs.clapfile.url = "github:PsychoLlama/clapfile";
+
+  outputs = { self, clapfile }: {
+    devShell = eachSystem (system: pkgs: pkgs.mkShell {
+      packages = [
+        (clapfile.packages.${system}.clapfile.command {
+          args.shell = "${pkgs.bash}/bin/bash";
+          command = {
+            name = "example";
+            run = "echo 'Hello, world!'";
+          };
+        })
+      ];
+    });
+  };
+}
+```
+
+### Usage with Nix
+
+The project flake exports a `clapfile` derivation. You can add this to a dev shell, or use the `clapfile.command {...}` builder to construct a wrapper program:
+
+```nix
+project = clapfile.command {
   args = {
     # Optional: extra options passed to `clapfile run`
   };
@@ -83,7 +117,7 @@ clapfile.command {
 }
 ```
 
-This provisions a `project` command you can add to your dev shell or `environment.systemPackages`.
+The result is a `project` command you can add to your dev shell or `environment.systemPackages`.
 
 ```bash
 project --help
@@ -103,26 +137,34 @@ Options:
   -h, --help  Print help
 ```
 
-## Installation
+### Usage with NixOS
 
-This is only available as a Nix flake for now.
+There is a NixOS module that works similar to the Nix example above.
 
 ```nix
 {
-  inputs.clapfile.url = "github:PsychoLlama/clapfile";
+  # Provides `config.clapfile`.
+  imports = [ flake-inputs.clapfile.nixosModules.nixos ];
 
-  outputs = { self, clapfile }: {
-    devShell = eachSystem (system: pkgs: pkgs.mkShell {
-      packages = [
-        (clapfile.packages.${system}.clapfile.command {
-          args.shell = "${pkgs.bash}/bin/bash";
-          command = {
-            name = "example";
-            run = "echo 'Hello, world!'";
-          };
-        })
-      ];
-    });
+  # Ensures `pkgs.clapfile` is available.
+  nixpkgs.overlays = [ flake-inputs.clapfile.overlays.programs ];
+
+  clapfile = {
+    enable = true; # Add the generated program to `environment.systemPackages`.
+    args = {
+      # Optional command line args passed to `clapfile run`
+    };
+
+    command = {
+      name = "greet";
+      about = "Says hello";
+      run = "echo 'Hello, world!'";
+    };
   };
 }
+```
+
+```bash
+greet
+# => "Hello, world!"
 ```

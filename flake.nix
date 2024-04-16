@@ -49,7 +49,9 @@
         nixos = import ./modules/nixos/clapfile.nix;
       };
 
-      packages = eachSystem (system: pkgs: {
+      packages = eachSystem (system: pkgs: rec {
+        default = clapfile;
+
         clapfile = buildPinnedRustPackage pkgs {
           pname = "clapfile";
           cargoLock.lockFile = ./Cargo.lock;
