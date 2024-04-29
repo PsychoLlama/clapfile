@@ -12,13 +12,13 @@ Documentation is kind of thrown together.
 
 ## Purpose
 
-Managed systems usually have maintenance scripts that run manually, like initializing a ZFS pool or updating a database schema. These scripts are written in Python, Bash, Perl, or whatever language was convenient at the time.
+Managed systems usually have maintenance scripts that run manually, like initializing a ZFS pool or unlocking a Vault server. These scripts are written in Python, Bash, Perl, or whatever language was convenient at the time.
 
 Over time scripts become less discoverable. They are scattered across the filesystem, have different interfaces, and different levels of `--help`.
 
-Clapfile is kind of like a task runner. It combines them under a single interface. You define subcommands, the script to execute, the options it accepts, and clapfile wraps them into in a single command.
+Clapfile unifies scripts into one interface. You define subcommands, the script to execute, the options it accepts, and clapfile wraps them into in a single CLI.
 
-This buys you some advantages:
+This gets you some advantages:
 
 - **Discoverability**: All management scripts are in one place and discoverable through `--help`.
 - **Shell completions**: Generated completions are available for popular shells.
