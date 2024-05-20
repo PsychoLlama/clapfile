@@ -3,8 +3,8 @@
 let
   inherit (import (pkgs.path + "/nixos/lib") { }) runTest;
   toml = pkgs.formats.toml { };
-
-in runTest {
+in
+runTest {
   hostPkgs = pkgs;
   name = "end-to-end-test-set";
 
@@ -25,8 +25,7 @@ in runTest {
     environment = {
       systemPackages = [ pkgs.clapfile ];
       etc = {
-        "clapfile/basic.toml".source =
-          toml.generate "basic-example.toml" { run = "echo 'hello-world'"; };
+        "clapfile/basic.toml".source = toml.generate "basic-example.toml" { run = "echo 'hello-world'"; };
 
         "clapfile/empty.toml".source = toml.generate "empty-example.toml" {
           name = "empty";

@@ -1,10 +1,16 @@
-{ lib, pkgs, config, ... }:
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
 
 with lib;
 
-let toml = pkgs.formats.toml { };
-
-in {
+let
+  toml = pkgs.formats.toml { };
+in
+{
   options = {
     package = mkPackageOption pkgs "clapfile" { };
 
@@ -48,7 +54,10 @@ in {
       default = pkgs.stdenvNoCC.mkDerivation {
         pname = config.name;
         version = config.command.version or "latest";
-        buildInputs = [ config.package pkgs.makeWrapper ];
+        buildInputs = [
+          config.package
+          pkgs.makeWrapper
+        ];
         phases = [ "buildPhase" ];
         buildPhase = ''
           mkdir -p "$out/bin"

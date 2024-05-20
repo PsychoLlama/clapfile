@@ -6,37 +6,53 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, rust-overlay }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+    }:
     let
       inherit (nixpkgs) lib;
 
-      overlays = [ (import rust-overlay) self.overlays.programs ];
+      overlays = [
+        (import rust-overlay)
+        self.overlays.programs
+      ];
 
-      systems =
-        [ "aarch64-linux" "aarch64-darwin" "x86_64-darwin" "x86_64-linux" ];
+      systems = [
+        "aarch64-linux"
+        "aarch64-darwin"
+        "x86_64-darwin"
+        "x86_64-linux"
+      ];
 
-      eachSystem = lib.flip lib.mapAttrs (lib.genAttrs systems
-        (system: import nixpkgs { inherit system overlays; }));
+      eachSystem = lib.flip lib.mapAttrs (
+        lib.genAttrs systems (system: import nixpkgs { inherit system overlays; })
+      );
 
-      makeRustToolchain = pkgs:
-        pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+      makeRustToolchain = pkgs: pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
       # Compile using the pinned Rust toolchain. This prevents CI from
       # installing two versions of Rust.
-      buildPinnedRustPackage = pkgs:
-        let toolchain = makeRustToolchain pkgs;
-        in lib.getAttr "buildRustPackage" (pkgs.makeRustPlatform {
-          cargo = toolchain;
-          rustc = toolchain;
-        });
-
-    in {
+      buildPinnedRustPackage =
+        pkgs:
+        let
+          toolchain = makeRustToolchain pkgs;
+        in
+        lib.getAttr "buildRustPackage" (
+          pkgs.makeRustPlatform {
+            cargo = toolchain;
+            rustc = toolchain;
+          }
+        );
+    in
+    {
       overlays = rec {
         default = programs;
 
         # Add `clapfile` to nixpkgs.
-        programs =
-          (_: super: { clapfile = self.packages.${super.system}.clapfile; });
+        programs = (_: super: { clapfile = self.packages.${super.system}.clapfile; });
       };
 
       nixosModules = rec {
@@ -49,48 +65,58 @@
         nixos = import ./modules/nixos/clapfile.nix;
       };
 
-      packages = eachSystem (system: pkgs: rec {
-        default = clapfile;
+      packages = eachSystem (
+        system: pkgs: rec {
+          default = clapfile;
 
-        clapfile = buildPinnedRustPackage pkgs {
-          pname = "clapfile";
-          cargoLock.lockFile = ./Cargo.lock;
+          clapfile = buildPinnedRustPackage pkgs {
+            pname = "clapfile";
+            cargoLock.lockFile = ./Cargo.lock;
 
-          version = pkgs.lib.pipe ./Cargo.toml [
-            builtins.readFile
-            builtins.fromTOML
-            (manifest: manifest.package.version)
-          ];
-
-          src = let fs = lib.fileset;
-          in fs.toSource {
-            root = ./.;
-            fileset = fs.unions [
-              (fs.fileFilter (f: f.hasExt "rs") ./src)
-              ./Cargo.lock
-              ./Cargo.toml
+            version = pkgs.lib.pipe ./Cargo.toml [
+              builtins.readFile
+              builtins.fromTOML
+              (manifest: manifest.package.version)
             ];
-          };
 
-          meta = {
-            description = "A declarative CLI generator";
-            homepage = "https://github.com/PsychoLlama/clapfile";
-            license = lib.licenses.mit;
-          };
-
-          # Generate a `clapfile` executable. Suitable for nix shells.
-          passthru.command = config:
-            let
-              root = lib.evalModules {
-                modules = [ ./modules/bare-module.nix config ];
-                specialArgs.pkgs = pkgs;
+            src =
+              let
+                fs = lib.fileset;
+              in
+              fs.toSource {
+                root = ./.;
+                fileset = fs.unions [
+                  (fs.fileFilter (f: f.hasExt "rs") ./src)
+                  ./Cargo.lock
+                  ./Cargo.toml
+                ];
               };
 
-            in root.config.program;
-        };
-      });
+            meta = {
+              description = "A declarative CLI generator";
+              homepage = "https://github.com/PsychoLlama/clapfile";
+              license = lib.licenses.mit;
+            };
 
-      devShell = eachSystem (system: pkgs:
+            # Generate a `clapfile` executable. Suitable for nix shells.
+            passthru.command =
+              config:
+              let
+                root = lib.evalModules {
+                  modules = [
+                    ./modules/bare-module.nix
+                    config
+                  ];
+                  specialArgs.pkgs = pkgs;
+                };
+              in
+              root.config.program;
+          };
+        }
+      );
+
+      devShell = eachSystem (
+        system: pkgs:
         pkgs.mkShell {
           packages = [
             (makeRustToolchain pkgs)
@@ -102,11 +128,14 @@
               ];
             }))
           ];
-        });
+        }
+      );
 
-      checks = eachSystem (system: pkgs:
+      checks = eachSystem (
+        system: pkgs:
         pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
           e2e = pkgs.callPackage ./modules/nixos/tests { clapfile = self; };
-        });
+        }
+      );
     };
 }
