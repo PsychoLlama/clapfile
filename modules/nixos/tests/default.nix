@@ -75,7 +75,6 @@ runTest {
       assert out == "foo\n", "Expected 'foo' to be printed"
 
     with subtest("Provisioned command"):
-      machine.shell_interact()
       out = machine.succeed("program")
       assert out == "2\n", "Nushell script did not print expected output"
   '';
