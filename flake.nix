@@ -52,7 +52,7 @@
         default = programs;
 
         # Add `clapfile` to nixpkgs.
-        programs = (_: super: { clapfile = self.packages.${super.system}.clapfile; });
+        programs = (final: prev: { clapfile = self.packages.${prev.system}.clapfile; });
       };
 
       nixosModules = rec {
@@ -115,19 +115,20 @@
         }
       );
 
-      devShell = eachSystem (
-        system: pkgs:
-        pkgs.mkShell {
-          packages = [
-            (makeRustToolchain pkgs)
-            (pkgs.clapfile)
-            (pkgs.clapfile.command ({
-              command = pkgs.lib.pipe ./clapfile.toml [
-                builtins.readFile
-                builtins.fromTOML
-              ];
-            }))
-          ];
+      devShells = eachSystem (
+        system: pkgs: {
+          default = pkgs.mkShell {
+            packages = [
+              (makeRustToolchain pkgs)
+              (pkgs.clapfile)
+              (pkgs.clapfile.command ({
+                command = pkgs.lib.pipe ./clapfile.toml [
+                  builtins.readFile
+                  builtins.fromTOML
+                ];
+              }))
+            ];
+          };
         }
       );
 
