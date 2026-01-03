@@ -4,11 +4,9 @@ Turn config files into command line apps
 
 ## Project Status
 
-:scientist: **Experimental**
+:no_entry: **Abandoned**
 
-I wrote this for [my home lab](https://github.com/PsychoLlama/home-lab/) (a managed NixOS cluster). It works, it's useful, but I'm still playing with the concept. I might abandon it later.
-
-Documentation is kind of thrown together.
+Compilation time and effort to add new features wasn't worth the overhead. I switched to [just](https://github.com/casey/just) and [nuenv](https://github.com/nushell/nu_scripts/blob/1cb6d6c460949b989b7fb1a6d02456a560521366/nu-hooks/nu-hooks/nuenv/hook.nu).
 
 ## Purpose
 
